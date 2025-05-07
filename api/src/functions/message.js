@@ -15,11 +15,11 @@ app.http('message', {
             const containerClient = blobServiceClient.getContainerClient(containerName);
             const blobClient = containerClient.getBlobClient(blobName);
 
-            let counnter = 0;
+            let counter = 0;
             try {
                 const downloadBlockBlobResponse = await blobClient.download(0);
                 const downloaded = await streamToText(downloadBlockBlobResponse.readableStreamBody);
-                counnter = parseInt(downloaded, 10) || 0;
+                counter = parseInt(downloaded, 10) || 0;
 
             } catch(BlobReadError) {
                 context.log('Blob not found, initializing counter to 0.');
