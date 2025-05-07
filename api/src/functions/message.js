@@ -42,5 +42,5 @@ async function streamToText(readable) {
     for await (const chunk of readable) {
         data += chunk;
     }
-    return
+    return data;
 }
