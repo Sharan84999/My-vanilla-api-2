@@ -8,34 +8,50 @@ app.http('message', {
         try {
             const AZURE_STORAGE_CONNECTION_STRING = process.env.AZURE_STORAGE_CONNECTION_STRING;
 
+            if (!AZURE_STORAGE_CONNECTION_STRING) {
+                throw new Error('AZURE_STORAGE_CONNECTION_STRING is not set');
+            }
+
             const containerName = 'containerforswa';
             const blobName = 'message.txt';
 
             const blobServiceClient = BlobServiceClient.fromConnectionString(AZURE_STORAGE_CONNECTION_STRING);
             const containerClient = blobServiceClient.getContainerClient(containerName);
-            const blobClient = containerClient.getBlobClient(blobName);
+
+            // Create the container if it doesn't exist
+            await containerClient.createIfNotExists();
+
+            const blobClient = containerClient.getBlockBlobClient(blobName);
 
             let counter = 0;
+
             try {
                 const downloadBlockBlobResponse = await blobClient.download(0);
                 const downloaded = await streamToText(downloadBlockBlobResponse.readableStreamBody);
                 counter = parseInt(downloaded, 10) || 0;
-
-            } catch(BlobReadError) {
-                context.log('Blob not found, initializing counter to 0.');
-                counnter = 0;
+            } catch (err) {
+                context.log('Blob not found or unreadable. Initializing counter to 0.');
             }
-            counter += 1;
-            await blobClient.upload(counter.toString(), counter.toString().length, {overwrite: true});
 
-            return {body: `This page has been viewed ${counter} times!`};
+            counter += 1;
+
+            await blobClient.upload(counter.toString(), counter.toString().length, { overwrite: true });
+
+            return {
+                status: 200,
+                body: `This page has been viewed ${counter} times!`
+            };
         } catch (error) {
             context.log.error('Error:', error.message);
-            return {status: 500, body: `Error: ${error.message}`};
-        }       
+            return {
+                status: 500,
+                body: `Internal Server Error: ${error.message}`
+            };
+        }
     }
 });
 
+// Helper function to convert stream to text
 async function streamToText(readable) {
     readable.setEncoding('utf8');
     let data = '';
